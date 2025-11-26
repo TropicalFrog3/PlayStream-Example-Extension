@@ -1,0 +1,46 @@
+# Gradle
+.gradle/
+build/
+!build/example-extension/outputs/apk/example-extension-v1.0.0.apk
+
+# Android
+*.iml
+.idea/
+local.properties
+*.apk
+!example-extension-v1.0.0.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Kotlin
+*.kotlin_module
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# Build outputs
+/example-extension/build/
+!/example-extension/build/outputs/apk/release/
+
+# Dart/Flutter (if any)
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+pubspec.lock
+
+# Other
+*.har
+module1.wasm

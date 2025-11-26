@@ -1,0 +1,10 @@
+{
+  "id": "example-extension",
+  "name": "Example Extension",
+  "version": "1.0.0",
+  "description": "Example extension for PlayStream. A template for creating new extensions.",
+  "downloadUrl": "",
+  "iconUrl": "",
+  "size": 0,
+  "updatedAt": "2025-11-26T00:00:00Z"
+}
