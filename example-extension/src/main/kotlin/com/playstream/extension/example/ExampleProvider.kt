@@ -15,7 +15,27 @@ class ExampleProvider : MediaProvider() {
     override val version = "1.0.0"
     
     private val baseUrl = "https://www.vidking.net"
-    private val videoExtractor = VideoExtractor()
+    
+    // Platform detection - use Playwright for JVM, WebView for Android
+    private val isAndroid: Boolean by lazy {
+        try {
+            Class.forName("android.os.Build")
+            true
+        } catch (e: ClassNotFoundException) {
+            false
+        }
+    }
+    
+    private val videoExtractor: VideoExtractor by lazy {
+        VideoExtractor()
+    }
+    
+    // Android context will be set by the app
+    private var androidContext: android.content.Context? = null
+    
+    fun setAndroidContext(context: android.content.Context) {
+        this.androidContext = context
+    }
     
     override fun searchMedia(opts: SearchOptions): List<SearchResult> {
         // Example using Fetch utility:
@@ -69,9 +89,26 @@ class ExampleProvider : MediaProvider() {
     }
     
     override fun getEpisodeServer(episode: EpisodeDetails, server: String): EpisodeServer {
-        // Extract video URL using headless browser
         println("Extracting video URL for: ${episode.url}")
-        val videoUrl = videoExtractor.extractVideoUrl(episode.url)
+        
+        val videoUrl = if (isAndroid) {
+            // Use Android WebView
+            if (androidContext == null) {
+                println("✗ Android context not set. Call setAndroidContext() first.")
+                null
+            } else {
+                try {
+                    val androidExtractor = AndroidVideoExtractor(androidContext!!)
+                    androidExtractor.extractVideoUrl(episode.url)
+                } catch (e: Exception) {
+                    println("✗ Android WebView extraction failed: ${e.message}")
+                    null
+                }
+            }
+        } else {
+            // Use Playwright for JVM/Desktop
+            videoExtractor.extractVideoUrl(episode.url)
+        }
         
         if (videoUrl == null) {
             println("⚠ Failed to extract video URL, returning empty sources")

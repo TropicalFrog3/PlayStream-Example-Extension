@@ -46,13 +46,21 @@ cd example-extension
 
 **Note:** Playwright requires JVM and will automatically download Chromium (~100MB) on first run.
 
-## Important Notes
+## 🔄 Platform Support
 
-⚠️ **Android Limitation**: Playwright does NOT work on Android devices. The current implementation is for testing purposes only. For production Android use, you'll need to:
+This extension automatically detects the runtime platform:
 
-1. Use Android WebView to load and intercept requests
-2. Set up a proxy server running Playwright
-3. Reverse engineer the encryption algorithm
+### Desktop/JVM (Testing)
+- Uses **Playwright** with headless Chromium
+- Requires ~100MB Chromium download on first run
+- Full JavaScript execution support
+
+### Android (Production)
+- Uses **Android WebView** for video extraction
+- No additional dependencies required
+- Native Android integration
+
+**Important**: Call `provider.setAndroidContext(context)` before using on Android.
 
 ## Project Structure
 
