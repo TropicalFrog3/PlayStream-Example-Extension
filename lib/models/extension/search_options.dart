@@ -12,10 +12,18 @@ class SearchOptions {
   /// Optional year filter for search results
   final int? year;
 
+  /// Optional media type filter: "movie" or "tv"
+  final String? mediaType;
+
+  /// Optional season number (for TV shows)
+  final int? seasonNumber;
+
   SearchOptions({
     required this.media,
     required this.query,
     this.year,
+    this.mediaType,
+    this.seasonNumber,
   });
 
   factory SearchOptions.fromJson(Map<String, dynamic> json) {
@@ -23,6 +31,8 @@ class SearchOptions {
       media: Media.fromJson(json['media'] as Map<String, dynamic>),
       query: json['query'] as String,
       year: json['year'] as int?,
+      mediaType: json['mediaType'] as String?,
+      seasonNumber: json['seasonNumber'] as int?,
     );
   }
 
@@ -31,6 +41,8 @@ class SearchOptions {
       'media': media.toJson(),
       'query': query,
       if (year != null) 'year': year,
+      if (mediaType != null) 'mediaType': mediaType,
+      if (seasonNumber != null) 'seasonNumber': seasonNumber,
     };
   }
 
@@ -40,13 +52,16 @@ class SearchOptions {
     return other is SearchOptions &&
         other.media == media &&
         other.query == query &&
-        other.year == year;
+        other.year == year &&
+        other.mediaType == mediaType &&
+        other.seasonNumber == seasonNumber;
   }
 
   @override
-  int get hashCode => Object.hash(media, query, year);
+  int get hashCode =>
+      Object.hash(media, query, year, mediaType, seasonNumber);
 
   @override
   String toString() =>
-      'SearchOptions(media: $media, query: $query, year: $year)';
+      'SearchOptions(media: $media, query: $query, year: $year, mediaType: $mediaType, seasonNumber: $seasonNumber)';
 }

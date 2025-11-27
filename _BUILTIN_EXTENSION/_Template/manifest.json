@@ -1,0 +1,10 @@
+{
+  "id": "template-extension",
+  "name": "Template Extension",
+  "version": "1.0.0",
+  "description": "A minimal template for creating PlayStream extensions.",
+  "downloadUrl": "",
+  "iconUrl": "",
+  "size": 0,
+  "updatedAt": "2025-11-26T00:00:00Z"
+}

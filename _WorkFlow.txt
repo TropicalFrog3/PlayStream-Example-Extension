@@ -1,0 +1,7 @@
+gradle assembleDebug
+copy build\outputs\apk\debug\template-extension-debug.apk .\hdss-extension.apk
+adb install -r hdss-extension.apk
+git add -A
+git commit -m "update"
+git push
+gh release upload v1.0.0 hdss-extension.apk --clobber --repo https://github.com/TropicalFrog3/HDSS.git

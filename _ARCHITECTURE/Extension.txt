@@ -1,0 +1,79 @@
+Extension-Related Files
+Based on my analysis of the project, here's a comprehensive list of files related to the extension system:
+
+Flutter/Dart Side (lib/)
+Core Extension Services:
+
+lib/services/extension/extension_manager.dart - Main extension manager handling installation, updates, invocation, caching, and health monitoring (ANIME)
+lib/services/extension/movieshow_stream_manager.dart - Movie/show streaming manager with caching and provider operations (MOVIES/TV SHOWS)
+
+Extension Repositories:
+
+lib/repositories/movieshow_stream_repository.dart - Business logic for movie/show streaming (automatic matching, manual mapping, fuzzy search)
+
+Extension Models:
+
+lib/models/extension/cache_entry.dart - Cache entry model for storing temporary data
+lib/models/extension/cache_entry.g.dart - Generated Hive adapter
+lib/models/extension/console_log_entry.dart - Console log capture model
+lib/models/extension/episode_details.dart - Episode metadata model (ANIME - absolute numbering)
+lib/models/extension/episode_server.dart - Episode streaming server model (ANIME)
+lib/models/extension/episode_stream_source.dart - Streaming sources for TV show episodes (MOVIES/TV - S/E numbering)
+lib/models/extension/movie_stream_source.dart - Streaming sources for movies (MOVIES/TV - direct playback)
+lib/models/extension/extension_exception.dart - Extension error handling
+lib/models/extension/extension_info.dart - Available extension metadata from GitHub
+lib/models/extension/extension_info.g.dart - Generated Hive adapter
+lib/models/extension/extension_metadata.dart - Installed extension metadata
+lib/models/extension/extension_metadata.g.dart - Generated Hive adapter
+lib/models/extension/extension_models.dart - Common extension models
+lib/models/extension/extension_preferences.dart - User preferences per extension
+lib/models/extension/extension_preferences.g.dart - Generated Hive adapter
+lib/models/extension/extension_provider.dart - Abstract provider interface (ANIME)
+lib/models/extension/extension_settings.dart - Extension configuration model (ANIME)
+lib/models/extension/movieshow_stream_provider.dart - Abstract provider interface for movie/show streaming (MOVIES/TV)
+lib/models/extension/movieshow_stream_settings.dart - Provider settings and capabilities (MOVIES/TV)
+lib/models/extension/fuzzy_date.dart - Date handling for media
+lib/models/extension/installation_request.dart - Installation request model
+lib/models/extension/media.dart - Media metadata model
+lib/models/extension/method_channel_request.dart - Native bridge request model
+lib/models/extension/method_channel_response.dart - Native bridge response model
+lib/models/extension/movie_details.dart - Movie metadata model
+lib/models/extension/sandbox_execution_result.dart - Sandbox test result model
+lib/models/extension/search_options.dart - Search parameters model (supports both ANIME and MOVIES/TV with mediaType and seasonNumber)
+lib/models/extension/search_result.dart - Search result model
+lib/models/extension/season_details.dart - Season metadata for TV shows (MOVIES/TV)
+lib/models/extension/show_episode_details.dart - Episode details with season/episode numbering (MOVIES/TV)
+lib/models/extension/stream_server.dart - Streaming server model
+lib/models/extension/video_source.dart - Video source/quality model
+lib/models/extension/video_subtitle.dart - Subtitle model
+Android/Kotlin Side (android/app/src/main/kotlin/com/frog/playstream/extensions/)
+Core Extension Infrastructure:
+
+ExtensionBridge.kt - MethodChannel bridge between Flutter and native Android
+ExtensionLoader.kt - Dynamic APK loading using DexClassLoader
+ExtensionRegistry.kt - Thread-safe registry for loaded extensions
+IExtensionProvider.kt - Interface that all extensions must implement
+JsExtensionEngine.kt - QuickJS runtime for JavaScript extensions
+NativeHttpClient.kt - HTTP client injected into JS runtime
+ConsoleLogCapture.kt - Captures console output during extension execution
+Key Architecture Points:
+Extension Loading: Extensions are APK files loaded dynamically at runtime using DexClassLoader
+Bridge Pattern: Flutter communicates with native extensions via MethodChannel (com.playstream/extensions)
+Provider Interfaces: 
+  - IExtensionProvider (ANIME): search(), findEpisodes(), findEpisodeServer(), getSettings()
+  - IMovieShowStreamProvider (MOVIES/TV): search(), getMovieSource(), getSeasons(), getSeasonEpisodes(), getEpisodeSource(), getSettings()
+JavaScript Support: Extensions can be written in JavaScript using the QuickJS engine
+Parallel Systems: Anime and Movie/Show streaming systems run independently with separate managers and models
+Episode Numbering:
+  - ANIME: Absolute numbering (1, 2, 3, ..., 100)
+  - TV SHOWS: Season + Episode (S01E01, S01E02, S02E01)
+Metadata Sources:
+  - ANIME: AniList ID (primary), MAL ID (secondary)
+  - MOVIES/TV: TMDB ID (primary), IMDB ID (secondary)
+Caching Strategy:
+  - ANIME: 1hr manifest, 5min search, 30min servers
+  - MOVIES/TV: 5min search, 24hr seasons/episodes, 30min sources
+Health Monitoring: Tracks consecutive failures and marks extensions as "problematic" after 5 failures
+Sandbox Testing: Allows testing extensions with console log capture before deployment
+Update Management: Checks GitHub for updates, downloads new versions, and handles rollback on failure
+Fuzzy Matching: Automatic content matching with scoring algorithm and manual mapping override support

@@ -9,7 +9,13 @@ import '../../models/extension/search_options.dart';
 import '../../models/extension/media.dart';
 import '../../models/extension/fuzzy_date.dart';
 import '../../services/extension/extension_manager.dart';
-import '../../controllers/movie_controller.dart';
+import '../../services/trakt/trakt_client.dart';
+import '../../core/config/trakt_config.dart';
+
+/// Provider for TraktClient
+final traktClientProvider = Provider<TraktClient>((ref) {
+  return TraktClient();
+});
 
 /// Extension Sandbox Screen for testing extension methods
 class ExtensionSandboxScreen extends ConsumerStatefulWidget {
@@ -34,7 +40,6 @@ class _ExtensionSandboxScreenState extends ConsumerState<ExtensionSandboxScreen>
   final TextEditingController _imdbIdController = TextEditingController();
   final TextEditingController _tmdbIdController = TextEditingController();
   final TextEditingController _serverNameController = TextEditingController(text: 'vidking');
-  String? _selectedMediaType;
   
   // State variables for execution results
   String _output = '';
@@ -348,223 +353,262 @@ class _ExtensionSandboxScreenState extends ConsumerState<ExtensionSandboxScreen>
   }
 
   Widget _buildInputFields() {
-    final isSearchMethod = _selectedMethod == 'search';
-    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Media Title field
-        Text(
-          _selectedMethod == 'search' ? 'Media Title (optional if ID provided)' : (_selectedMethod == 'findEpisodes' ? 'Show ID' : 'Episode ID'),
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+        // Simplified input based on method
+        if (_selectedMethod == 'search') ...[
+          // For search: Only Media ID (TMDB or IMDB)
+          Text(
+            'Media ID (TMDB or IMDB)',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
           ),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _mediaTitleController,
-          onChanged: (_) {
-            setState(() {}); // Trigger rebuild for validation
-            _saveState(); // Save state when media title changes
-          },
-          style: const TextStyle(color: Colors.white, fontSize: 16),
-          decoration: InputDecoration(
-            hintText: _selectedMethod == 'search' ? 'Enter media title (or use TMDB/IMDB ID below)' : (_selectedMethod == 'findEpisodes' ? 'e.g. tv:114472' : 'e.g. tv:114472:1:1'),
-            hintStyle: TextStyle(color: Colors.grey[600]),
-            filled: true,
-            fillColor: Colors.grey[900],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[800]!),
+          const SizedBox(height: 8),
+          Text(
+            'Metadata will be automatically fetched from Trakt API',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[500],
+              fontStyle: FontStyle.italic,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[800]!),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ),
-        ),
-        
-        // IMDB ID and TMDB ID fields (only for search method)
-        if (isSearchMethod) ...[
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'IMDB ID (optional)',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _imdbIdController,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                      decoration: InputDecoration(
-                        hintText: 'e.g. tt1234567',
-                        hintStyle: TextStyle(color: Colors.grey[600]),
-                        filled: true,
-                        fillColor: Colors.grey[900],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[800]!),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[800]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      ),
-                    ),
-                  ],
-                ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _mediaTitleController,
+            onChanged: (_) {
+              setState(() {});
+              _saveState();
+            },
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            decoration: InputDecoration(
+              hintText: 'e.g. tmdb:27205 or imdb:tt1375666',
+              hintStyle: TextStyle(color: Colors.grey[600]),
+              filled: true,
+              fillColor: Colors.grey[900],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[800]!),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'TMDB ID (optional)',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _tmdbIdController,
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                      decoration: InputDecoration(
-                        hintText: 'e.g. 12345',
-                        hintStyle: TextStyle(color: Colors.grey[600]),
-                        filled: true,
-                        fillColor: Colors.grey[900],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[800]!),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: Colors.grey[800]!),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      ),
-                    ),
-                  ],
-                ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[800]!),
               ),
-            ],
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+          ),
+        ] else if (_selectedMethod == 'findEpisodes') ...[
+          // For findEpisodes: Only Media ID and Episode Number
+          Text(
+            'Media ID (TMDB or IMDB)',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Metadata will be automatically fetched from Trakt API',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[500],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _mediaTitleController,
+            onChanged: (_) {
+              setState(() {});
+              _saveState();
+            },
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            decoration: InputDecoration(
+              hintText: 'e.g. tmdb:1396 or imdb:tt0903747',
+              hintStyle: TextStyle(color: Colors.grey[600]),
+              filled: true,
+              fillColor: Colors.grey[900],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[800]!),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[800]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
           ),
           const SizedBox(height: 20),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Media Type (optional)',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+          Text(
+            'Episode Number',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _episodeController,
+            keyboardType: TextInputType.number,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            decoration: InputDecoration(
+              hintText: 'e.g. 1 (for episode 1)',
+              hintStyle: TextStyle(color: Colors.grey[600]),
+              filled: true,
+              fillColor: Colors.grey[900],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[800]!),
               ),
-              const SizedBox(height: 12),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey[900],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[800]!),
-                ),
-                child: DropdownButtonFormField<String>(
-                  value: _selectedMediaType,
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                    hintText: 'Select media type',
-                    hintStyle: TextStyle(color: Colors.grey[600]),
-                  ),
-                  dropdownColor: Colors.grey[900],
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                  icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
-                  items: const [
-                    DropdownMenuItem(value: null, child: Text('Auto (default)')),
-                    DropdownMenuItem(value: 'movie', child: Text('Movie')),
-                    DropdownMenuItem(value: 'tv', child: Text('TV Show')),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedMediaType = value;
-                    });
-                  },
-                ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[800]!),
               ),
-            ],
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+          ),
+        ] else if (_selectedMethod == 'findEpisodeServer') ...[
+          // For findEpisodeServer: Media ID, Episode JSON, and Server
+          Text(
+            'Media ID (TMDB or IMDB)',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Metadata will be automatically fetched from Trakt API',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[500],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _mediaTitleController,
+            onChanged: (_) {
+              setState(() {});
+              _saveState();
+            },
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            decoration: InputDecoration(
+              hintText: 'e.g. tmdb:1396 or imdb:tt0903747',
+              hintStyle: TextStyle(color: Colors.grey[600]),
+              filled: true,
+              fillColor: Colors.grey[900],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[800]!),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[800]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Episode JSON',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Paste the episode JSON from findEpisodes result',
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey[500],
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _episodeController,
+            maxLines: 4,
+            style: const TextStyle(color: Colors.white, fontSize: 14, fontFamily: 'monospace'),
+            decoration: InputDecoration(
+              hintText: '{"id": "...", "number": 1, "url": "...", "title": "..."}',
+              hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+              filled: true,
+              fillColor: Colors.grey[900],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[800]!),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[800]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+              ),
+              contentPadding: const EdgeInsets.all(16),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Server Name',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _serverNameController,
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            decoration: InputDecoration(
+              hintText: 'e.g. vidking',
+              hintStyle: TextStyle(color: Colors.grey[600]),
+              filled: true,
+              fillColor: Colors.grey[900],
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[800]!),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey[800]!),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
           ),
         ],
-        
-        // Server name field (only for findEpisodeServer method)
-        if (_selectedMethod == 'findEpisodeServer') ...[
-          const SizedBox(height: 20),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Server Name',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _serverNameController,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-                decoration: InputDecoration(
-                  hintText: 'e.g. vidking',
-                  hintStyle: TextStyle(color: Colors.grey[600]),
-                  filled: true,
-                  fillColor: Colors.grey[900],
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[800]!),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey[800]!),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Color(0xFF6C63FF), width: 2),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                ),
-              ),
-            ],
-          ),
-        ],
-
       ],
     );
   }
@@ -848,17 +892,20 @@ class _ExtensionSandboxScreenState extends ConsumerState<ExtensionSandboxScreen>
   bool _isInputValid() {
     if (_selectedExtensionId == null) return false;
     
-    // For search method, allow empty media title if TMDB or IMDB ID is provided
-    if (_selectedMethod == 'search') {
-      final hasMediaTitle = _mediaTitleController.text.trim().isNotEmpty;
-      final hasTmdbId = _tmdbIdController.text.trim().isNotEmpty;
-      final hasImdbId = _imdbIdController.text.trim().isNotEmpty;
-      
-      return hasMediaTitle || hasTmdbId || hasImdbId;
+    // Media ID is always required
+    if (_mediaTitleController.text.trim().isEmpty) return false;
+    
+    // For findEpisodes, episode number is required
+    if (_selectedMethod == 'findEpisodes' && _episodeController.text.trim().isEmpty) {
+      return false;
     }
     
-    // For other methods, media title/ID is required
-    if (_mediaTitleController.text.trim().isEmpty) return false;
+    // For findEpisodeServer, episode JSON and server are required
+    if (_selectedMethod == 'findEpisodeServer') {
+      if (_episodeController.text.trim().isEmpty || _serverNameController.text.trim().isEmpty) {
+        return false;
+      }
+    }
     
     return true;
   }
@@ -868,19 +915,20 @@ class _ExtensionSandboxScreenState extends ConsumerState<ExtensionSandboxScreen>
       return 'Please select an extension';
     }
     
-    if (_selectedMethod == 'search') {
-      final hasMediaTitle = _mediaTitleController.text.trim().isNotEmpty;
-      final hasTmdbId = _tmdbIdController.text.trim().isNotEmpty;
-      final hasImdbId = _imdbIdController.text.trim().isNotEmpty;
-      
-      if (!hasMediaTitle && !hasTmdbId && !hasImdbId) {
-        return 'Please enter a media title, TMDB ID, or IMDB ID';
+    if (_mediaTitleController.text.trim().isEmpty) {
+      return 'Please enter a Media ID (e.g. tmdb:27205 or imdb:tt1375666)';
+    }
+    
+    if (_selectedMethod == 'findEpisodes' && _episodeController.text.trim().isEmpty) {
+      return 'Please enter an episode number';
+    }
+    
+    if (_selectedMethod == 'findEpisodeServer') {
+      if (_episodeController.text.trim().isEmpty) {
+        return 'Please enter episode JSON';
       }
-    } else if (_mediaTitleController.text.trim().isEmpty) {
-      if (_selectedMethod == 'findEpisodes') {
-        return 'Please enter a show ID (e.g. tv:114472)';
-      } else {
-        return 'Please enter an episode ID (e.g. tv:114472:1:1)';
+      if (_serverNameController.text.trim().isEmpty) {
+        return 'Please enter a server name';
       }
     }
     
@@ -924,130 +972,109 @@ class _ExtensionSandboxScreenState extends ConsumerState<ExtensionSandboxScreen>
       // Build arguments based on selected method
       final args = <String, dynamic>{};
       
-      if (_selectedMethod == 'search') {
-        // Build SearchOptions object for the new architecture
-        final imdbId = _imdbIdController.text.trim();
-        final tmdbId = _tmdbIdController.text.trim();
-        final mediaTitle = _mediaTitleController.text.trim();
+      // Parse Media ID (format: tmdb:12345 or imdb:tt1234567)
+      final mediaIdInput = _mediaTitleController.text.trim();
+      final mediaIdParts = mediaIdInput.split(':');
+      
+      if (mediaIdParts.length != 2) {
+        throw Exception('Invalid Media ID format. Use "tmdb:12345" or "imdb:tt1234567"');
+      }
+      
+      final idType = mediaIdParts[0].toLowerCase();
+      final idValue = mediaIdParts[1];
+      
+      if (idType != 'tmdb' && idType != 'imdb') {
+        throw Exception('Invalid ID type. Use "tmdb" or "imdb"');
+      }
+      
+      // Fetch metadata from Trakt API
+      Media? media;
+      String? mediaTitle;
+      
+      try {
+        final traktClient = ref.read(traktClientProvider);
         
-        // Query is required - use media title, or fallback to TMDB/IMDB ID, or use placeholder
-        String query = mediaTitle;
-        if (query.isEmpty) {
-          if (tmdbId.isNotEmpty) {
-            query = 'TMDB:$tmdbId';
-          } else if (imdbId.isNotEmpty) {
-            query = 'IMDB:$imdbId';
-          } else {
-            query = 'search'; // Fallback placeholder
-          }
-        }
-        
-        // Fetch metadata from Trakt if TMDB or IMDB ID is provided
-        Media? media;
-        
-        if (tmdbId.isNotEmpty || imdbId.isNotEmpty) {
-          try {
-            final traktClient = ref.read(traktClientProvider);
-            
-            // Determine ID type and value
-            final idType = tmdbId.isNotEmpty ? 'tmdb' : 'imdb';
-            final idValue = tmdbId.isNotEmpty ? tmdbId : imdbId;
-            
-            // Search by ID using Trakt ID Lookup endpoint
-            // The endpoint is: GET /search/:id_type/:id
-            final searchResults = await traktClient.search.idLookup(
-              idType: idType,
-              id: idValue,
-              type: _selectedMediaType, // Can be 'movie', 'show', or null for auto-detect
-            );
-            
-            if (searchResults.isNotEmpty) {
-              final result = searchResults.first;
-              
-              // Extract media info based on type
-              if (result['type'] == 'movie' && result['movie'] != null) {
-                final movie = result['movie'];
-                final ids = movie['ids'] as Map<String, dynamic>?;
-                
-                media = Media(
-                  id: ids?['trakt'] ?? 0,
-                  imdbId: ids?['imdb'],
-                  tmdbId: ids?['tmdb']?.toString(),
-                  format: 'MOVIE',
-                  englishTitle: movie['title'],
-                  synonyms: [],
-                  isAdult: false,
-                  startDate: movie['released'] != null 
-                    ? _parseFuzzyDate(movie['released']) 
-                    : null,
-                );
-              } else if (result['type'] == 'show' && result['show'] != null) {
-                final show = result['show'];
-                final ids = show['ids'] as Map<String, dynamic>?;
-                
-                media = Media(
-                  id: ids?['trakt'] ?? 0,
-                  imdbId: ids?['imdb'],
-                  tmdbId: ids?['tmdb']?.toString(),
-                  format: 'TV',
-                  englishTitle: show['title'],
-                  synonyms: [],
-                  isAdult: false,
-                  startDate: show['first_aired'] != null 
-                    ? _parseFuzzyDate(show['first_aired']) 
-                    : null,
-                );
-              }
-            }
-          } catch (e) {
-            // If Trakt fetch fails, log but continue with basic media object
-            debugPrint('Failed to fetch metadata from Trakt: $e');
-          }
-        }
-        
-        // Fallback to basic Media object if Trakt fetch failed or no IDs provided
-        media ??= Media(
-          id: 0,
-          imdbId: imdbId.isNotEmpty ? imdbId : null,
-          tmdbId: tmdbId.isNotEmpty ? tmdbId : null,
-          format: _selectedMediaType?.toUpperCase(),
-          englishTitle: mediaTitle.isNotEmpty ? mediaTitle : null,
-          synonyms: [],
-          isAdult: false,
+        // Search by ID using Trakt ID Lookup endpoint
+        final searchResults = await traktClient.search.idLookup(
+          idType: idType,
+          id: idValue,
+          extended: TraktExtended.full,
         );
         
+        if (searchResults.isEmpty) {
+          throw Exception('No results found for $idType:$idValue on Trakt');
+        }
+        
+        final result = searchResults.first;
+        
+        // Extract media info based on type
+        if (result['type'] == 'movie' && result['movie'] != null) {
+          final movie = result['movie'];
+          final ids = movie['ids'] as Map<String, dynamic>?;
+          
+          mediaTitle = movie['title'];
+          media = Media(
+            id: ids?['trakt'] ?? 0,
+            imdbId: ids?['imdb'],
+            tmdbId: ids?['tmdb']?.toString(),
+            format: 'MOVIE',
+            englishTitle: movie['title'],
+            synonyms: [],
+            isAdult: false,
+            startDate: movie['released'] != null 
+              ? _parseFuzzyDate(movie['released']) 
+              : null,
+          );
+        } else if (result['type'] == 'show' && result['show'] != null) {
+          final show = result['show'];
+          final ids = show['ids'] as Map<String, dynamic>?;
+          
+          mediaTitle = show['title'];
+          media = Media(
+            id: ids?['trakt'] ?? 0,
+            imdbId: ids?['imdb'],
+            tmdbId: ids?['tmdb']?.toString(),
+            format: 'TV',
+            englishTitle: show['title'],
+            synonyms: [],
+            isAdult: false,
+            startDate: show['first_aired'] != null 
+              ? _parseFuzzyDate(show['first_aired']) 
+              : null,
+          );
+        } else {
+          throw Exception('Unsupported media type: ${result['type']}');
+        }
+      } catch (e) {
+        // If Trakt fetch fails, show error and stop
+        throw Exception('Failed to fetch metadata from Trakt: $e');
+      }
+      
+      // Build method-specific arguments
+      if (_selectedMethod == 'search') {
         // Create SearchOptions object
         final searchOptions = SearchOptions(
           media: media,
-          query: query, // Now guaranteed to be non-empty
-          year: null, // Could add a year field to the UI later
+          query: mediaTitle ?? 'Unknown',
+          year: media.startDate?.year,
         );
         
-        // Convert to JSON for method channel
         args['searchOptions'] = searchOptions.toJson();
       } else if (_selectedMethod == 'findEpisodes') {
-        args['id'] = _mediaTitleController.text.trim();
+        // For findEpisodes, we need the show ID from the extension's search result
+        // Use the media ID as the show ID (extension will need to map it)
+        args['id'] = mediaIdInput;
       } else if (_selectedMethod == 'findEpisodeServer') {
-        // For findEpisodeServer, we need to parse the episode ID and create EpisodeDetails
-        final episodeId = _mediaTitleController.text.trim();
+        // Parse episode JSON
+        final episodeJson = _episodeController.text.trim();
         final serverName = _serverNameController.text.trim();
         
-        // Parse episode ID (format: tv:tmdbId:season:episode or movie:tmdbId)
-        final parts = episodeId.split(':');
-        
-        if (parts.isNotEmpty) {
-          // Create a minimal EpisodeDetails object
-          final episodeDetails = {
-            'id': episodeId,
-            'number': parts.length >= 4 ? int.tryParse(parts[3]) ?? 1 : 1,
-            'url': '', // Not needed for sandbox testing
-            'title': null,
-          };
-          
-          args['episode'] = episodeDetails;
-          args['server'] = serverName.isNotEmpty ? serverName : 'vidking'; // Use provided server name or default
-        } else {
-          args['episodeId'] = episodeId; // Fallback to old format
+        try {
+          final episodeData = jsonDecode(episodeJson) as Map<String, dynamic>;
+          args['episode'] = episodeData;
+          args['server'] = serverName;
+        } catch (e) {
+          throw Exception('Invalid episode JSON: $e');
         }
       }
 
